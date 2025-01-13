@@ -1,0 +1,94 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  /* Toolbar styles */
+  .toolbar-button {
+    @apply inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-xs font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 active:bg-gray-100 disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .toolbar-input {
+    @apply h-6 w-16 rounded border border-gray-200 px-2 py-0.5 text-xs tabular-nums shadow-sm;
+  }
+
+  /* Grid and cell styles */
+  .row-header {
+    @apply sticky top-0 z-10 border-b border-gray-200 bg-gray-50 px-2 py-1 text-xs font-medium text-gray-500;
+  }
+
+  .cell-wrapper {
+    @apply relative border border-gray-200 p-0 transition-colors;
+    min-width: 100px;
+    min-height: 24px;
+  }
+
+  /* Cell type variants */
+  .cell-wrapper--formula {
+    @apply bg-gray-50;
+  }
+
+  .cell-wrapper--waveform {
+    @apply bg-blue-50 p-0;
+  }
+
+  .cell-wrapper--oscillator {
+    @apply bg-green-50 p-0;
+  }
+
+  .cell-wrapper--beat {
+    @apply bg-yellow-50;
+  }
+
+  .cell-wrapper--metronome {
+    @apply bg-purple-50;
+  }
+
+  .cell-wrapper--time {
+    @apply bg-emerald-50;
+  }
+
+  .cell-wrapper--empty {
+    @apply bg-white;
+  }
+
+  /* Cell input styles */
+  .cell-wrapper input {
+    @apply h-full w-full border-none bg-white px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50;
+  }
+
+  /* Table styles */
+  table {
+    @apply border-separate border-spacing-0;
+  }
+
+  th {
+    @apply font-normal text-gray-500;
+  }
+
+  /* Debug styles */
+  .debug-info {
+    @apply absolute inset-0 flex flex-col justify-between bg-black bg-opacity-90 p-1 text-xs text-white;
+  }
+
+  .debug-type {
+    @apply font-mono text-emerald-300;
+  }
+
+  .debug-value {
+    @apply font-mono text-gray-300;
+  }
+}
+
+/* Animation utilities */
+.animate-ping {
+  animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes ping {
+  75%,
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
