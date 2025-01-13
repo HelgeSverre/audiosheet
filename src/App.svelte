@@ -31,6 +31,7 @@
   import AudioCell from "./cells/AudioCell.svelte";
   import { getCellAddress, getColumnLabel } from "./lib/utils";
   import SequenceCell from "./cells/SequenceCell.svelte";
+  import ChordCell from "./cells/ChordCell.svelte";
 
   const fps = 60;
   const frameInterval = 1000 / fps;
@@ -259,19 +260,18 @@
                   {:else if cell?.type === "metronome"}
                     <MetronomeCell bpm={cell.bpm} time={$time} />
                   {:else if cell?.type === "sequence"}
-                    <SequenceCell cell={cell} time={$time} trigger={cell.trigger} />
+                    <SequenceCell cell={cell} time={$time} />
                   {:else if cell?.type === "time"}
                     <TimeCell time={$time} />
                   {:else if cell?.type === "adsr"}
                     <ADSRCell
-                      attack={cell.attack}
-                      decay={cell.decay}
-                      sustain={cell.sustain}
-                      release={cell.release}
+                      cell={cell}
                       time={$time}
                     />
                   {:else if cell?.type === "audio"}
                     <AudioCell frequency={cell.frequency} subscribe={cell.subscribe} waveType={cell.waveType} />
+                  {:else if cell?.type === "chord"}
+                    <ChordCell cell={cell} />
                   {/if}
                 {:else}
                   <div class="p-1">

@@ -47,12 +47,24 @@ export function fillChordTestData() {
   let jsScript = `=JS(${code})`;
 
   replaceGrid([
-    /* 1 */ ["=CHORD('C', 'maj')", "=CHORD('C', 'min')", "=CHORD('C', 'dim')", "=CHORD('C', 'aug')"],
-    /* 2 */ ["C", "D", "E", "F", "G", "A", "B"],
-    /* 3 */ ["1", "2", "3", "4", "5", "6", "7"],
-    /* 4 */ ["maj", "min", "dim", "aug", "maj7", "min7", "7"],
-    /* 5 */ ["=CHORD(A2, A4)", "=CHORD(B2, B4)", "=CHORD(C2, C4)", "=CHORD(D2, D4)"],
-    /* 6 */ [jsScript, "100"],
+    /* 1 */ [
+      "=CHORD('C', 'maj')",
+      "=CHORD('C', 'min')",
+      "=CHORD('C', 'dim')",
+      "=CHORD('C', 'aug')",
+      "=CHORD('C', 'maj7')",
+      "=CHORD('C', 'min7')",
+      "=CHORD('C', '7')",
+    ],
+    ["", "", "", "", "", "", ""],
+    ["", "", "", "", "", "", ""],
+    ["", "", "", "", "", "", ""],
+    ["", "", "", "", "", "", ""],
+    // /* 2 */ ["C", "D", "E", "F", "G", "A", "B"],
+    // /* 3 */ ["1", "2", "3", "4", "5", "6", "7"],
+    // /* 4 */ ["maj", "min", "dim", "aug", "maj7", "min7", "7"],
+    // /* 5 */ ["=CHORD(A2, A4)", "=CHORD(B2, B4)", "=CHORD(C2, C4)", "=CHORD(D2, D4)"],
+    // /* 6 */ [jsScript, "100"],
   ]);
 }
 

@@ -90,6 +90,15 @@ src/
 3. Add parsing logic in `lib/parser.ts`
 4. Register in `App.svelte`
 
+## TODO lIST
+
+- `=EUCLIDEAN(8, 3)`
+- `=SCALE("C major", 4)`
+- `=PROB(["C4", "E4", "G4"], [0.5, 0.3, 0.2], 120)`
+- `=BEAT(120, "x ? x ?", 0.7)` (probability)
+- `=SEQ(A3, 120, "arpeggio")`
+- `=CHORDSEQ("ii-V-I", "C", 120)`
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
