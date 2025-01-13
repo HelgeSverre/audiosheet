@@ -1,19 +1,97 @@
-export type CellValue = string | number | null | CellObject;
+// noinspection JSUnusedGlobalSymbols
+
+export type CellValue = string | number | null | CellObject | ErrorCell;
+
+export type WaveType = "sine" | "square" | "sawtooth" | "triangle";
+
+export type NoteName = "C" | "C#" | "D" | "D#" | "E" | "F" | "F#" | "G" | "G#" | "A" | "A#" | "B";
+export type ChordQuality =
+  | "maj"
+  | "min"
+  | "dim"
+  | "aug"
+  | "maj7"
+  | "min7"
+  | "7"
+  | "dim7"
+  | "half-dim7"
+  | "sus2"
+  | "sus4";
 
 // Union of all possible cell types
-export type CellType = "waveform" | "oscillator" | "beat" | "metronome" | "time" | "adsr" | "audio" | "error";
+export type CellType =
+  | "waveform"
+  | "oscillator"
+  | "beat"
+  | "metronome"
+  | "time"
+  | "adsr"
+  | "audio"
+  | "error"
+  | "sequence"
+  | "chord";
 
-// Base cell object interface
 export interface CellObject {
   type: CellType;
+
   [key: string]: any;
 }
 
-// Valid wave types
-export type WaveType = "sine" | "square" | "sawtooth" | "triangle";
+export interface ChordDefinition {
+  intervals: number[]; // Semitones from root
+  symbol: string; // e.g., "m" for minor, "maj7" for major 7th
+  name: string; // Full name, e.g., "Minor Seventh"
+}
 
-// Waveform specific types
+export interface ChordResult {
+  type: "chord";
+  root: NoteName;
+  quality: ChordQuality;
+  frequencies: number[];
+  notes: string[];
+  symbol: string;
+}
+
 export type WaveformSource = "oscillator" | "parameters";
+
+export type SequenceMode = "vertical" | "horizontal" | "matrix";
+
+export interface ChordCell extends CellObject {
+  type: "chord";
+  value: string;
+  root: NoteName;
+  quality: ChordQuality;
+  frequencies: number[];
+  notes: string[];
+  symbol: string;
+}
+
+export interface SequenceCell extends CellObject {
+  type: "sequence";
+  values: (number | null)[];
+  currentStep: number;
+  totalSteps: number;
+  bpm: number;
+  trigger: (value: boolean) => void;
+  listen: (callback: (value: boolean) => void) => void;
+  getCurrentValue: () => number | null;
+  metadata: {
+    mode: SequenceMode;
+    range: CellRange;
+    bpm: number;
+  };
+}
+
+export interface CellRange {
+  start: { row: number; col: number };
+  end: { row: number; col: number };
+}
+
+export interface RangeSelector {
+  active: boolean;
+  start: { row: number; col: number } | null;
+  end: { row: number; col: number } | null;
+}
 
 export interface WaveformCell extends CellObject {
   type: "waveform";
@@ -72,7 +150,6 @@ export interface ErrorCell extends CellObject {
 
 // Parser types
 export type Operator = "+" | "-" | "*" | "/";
-export type Token = string;
 export type FormulaArgument = string | number | CellObject;
 
 // Function argument validation
@@ -106,9 +183,6 @@ export interface ParsedArgument {
   value: string | number;
   type: "cell_reference" | "number" | "string";
 }
-
-// Audio Types
-export type WaveType = "sine" | "square" | "sawtooth" | "triangle";
 
 export interface AudioParams {
   frequency: number;

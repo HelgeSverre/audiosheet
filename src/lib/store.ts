@@ -54,7 +54,7 @@ export function evaluateCell(row: number, col: number): void {
 
   if (typeof rawValue === "string" && rawValue.startsWith("=")) {
     try {
-      evaluatedValue = evaluateFormula(rawValue);
+      evaluatedValue = evaluateFormula(rawValue, row, col);
     } catch (err) {
       evaluatedValue = {
         type: "error",

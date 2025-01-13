@@ -14,7 +14,11 @@
 
   /* Grid and cell styles */
   .row-header {
-    @apply sticky top-0 z-10 border-b border-gray-200 bg-gray-50 px-2 py-1 text-xs font-medium text-gray-500;
+    @apply sticky top-0 z-10 border-b bg-slate-100 px-2 py-1 text-xs font-medium text-gray-500;
+  }
+
+  .col-header {
+    @apply sticky left-0 z-10 min-w-10 border-r bg-slate-100 px-2 py-1 text-xs font-medium text-gray-500;
   }
 
   .cell-wrapper {

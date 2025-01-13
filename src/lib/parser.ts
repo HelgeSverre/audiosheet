@@ -8,13 +8,28 @@ import {
   rawGridData,
   time,
 } from "./store";
-import { parseCellAddress } from "./utils";
-import type { AudioCell, CellValue } from "./types";
+import { getCellAddress, parseCellAddress } from "./utils";
+import type {
+  ADSRCell,
+  AudioCell,
+  BeatCell,
+  CellRange,
+  CellValue,
+  ChordQuality,
+  ChordResult,
+  MetronomeCell,
+  NoteName,
+  OscillatorCell,
+  SequenceCell,
+  SequenceMode,
+} from "./types";
+import { evaluateJS } from "./scripting";
+import { CHORD_TYPES, midiToFreq, midiToNoteName, NOTE_TO_MIDI } from "./chords";
 
 type Token = string;
 type FormulaArgument = string | number;
 
-export function evaluateFormula(formula: string, depth = 0): CellValue {
+export function evaluateFormula(formula: string, row: number, col: number, depth: number = 0): CellValue {
   if (depth > 10) {
     return { type: "error", error: "Maximum recursion depth exceeded" };
   }
@@ -41,6 +56,13 @@ export function evaluateFormula(formula: string, depth = 0): CellValue {
         return parseADSR(parseFunctionArguments(tokens.slice(1)), depth + 1);
       case "audio":
         return parseAudio(parseFunctionArguments(tokens.slice(1)), depth + 1);
+      case "seq":
+        return parseSequence(parseFunctionArguments(tokens.slice(1)), depth + 1);
+      case "chord":
+        return parseChord(parseFunctionArguments(tokens.slice(1)), depth + 1);
+      case "js":
+        return parseJS(tokens.slice(1).join(" "), row, col);
+
       default:
         return parseArithmetic(tokens, depth + 1);
     }
@@ -50,6 +72,57 @@ export function evaluateFormula(formula: string, depth = 0): CellValue {
       error: error instanceof Error ? error.message : String(error),
     };
   }
+}
+
+export function parseJS(code: string, row: number, col: number): any {
+  return evaluateJS(code, getCellAddress(row, col));
+}
+
+export function parseChord(args: string[], depth: number): ChordResult {
+  if (args.length < 1 || args.length > 2) {
+    throw new Error('CHORD requires root note and optional quality (e.g., CHORD("C", "maj7"))');
+  }
+
+  // Parse root note and quality
+  const [rootStr, qualityStr = "maj"] = args.map((arg) => arg.replace(/['"]/g, ""));
+  const root = validateNoteName(rootStr);
+  const quality = validateChordQuality(qualityStr);
+
+  // Get the chord definition
+  const chordDef = CHORD_TYPES[quality];
+  if (!chordDef) {
+    throw new Error(`Unknown chord quality: ${quality}`);
+  }
+
+  // Calculate MIDI notes
+  const rootMidi = NOTE_TO_MIDI[root];
+  const midiNotes = chordDef.intervals.map((interval) => rootMidi + interval);
+
+  // Generate frequencies and note names
+  // Build symbol (e.g., "Cmaj7")
+  return {
+    type: "chord",
+    root,
+    quality,
+    frequencies: midiNotes.map(midiToFreq),
+    notes: midiNotes.map(midiToNoteName),
+    symbol: `${root}${chordDef.symbol}`,
+  };
+}
+
+function validateNoteName(note: string): NoteName {
+  const normalized = note.toUpperCase();
+  if (normalized in NOTE_TO_MIDI) {
+    return normalized as NoteName;
+  }
+  throw new Error(`Invalid note name: ${note}`);
+}
+
+function validateChordQuality(quality: string): ChordQuality {
+  if (quality in CHORD_TYPES) {
+    return quality as ChordQuality;
+  }
+  throw new Error(`Invalid chord quality: ${quality}. Valid qualities: ${Object.keys(CHORD_TYPES).join(", ")}`);
 }
 
 function parseAudio(args: string[], depth: number): AudioCell {
@@ -176,9 +249,116 @@ function parseWaveform(tokens: Token[], depth: number): CellValue {
   }
 }
 
-// ... Additional parsing functions (parseOscillator, parseADSR, etc.)
-// I can continue with these if you'd like, but they follow the same pattern
-// Let me know if you want to see any specific ones
+export function parseSequence(args: string[], depth: number): SequenceCell {
+  // SEQ(A1:A4, 120, "vertical")
+  // or SEQ(A1:D1, 120, "horizontal")
+  if (args.length < 2 || args.length > 3) {
+    throw new Error("Sequence requires 2 or 3 arguments: range, bpm, [mode]");
+  }
+
+  const [rangeStr, bpmStr, modeStr = "vertical"] = args;
+  const range = parseRange(rangeStr);
+  const bpm = parseFloat(bpmStr) || 120;
+  const mode = validateMode(modeStr);
+
+  const values = extractValuesFromRange(range, mode);
+
+  const subscribers: ((value: boolean) => void)[] = [];
+
+  let currentStep = 0;
+  const totalSteps = values.length;
+
+  // Create interval for playback
+  const stepDuration = 60 / bpm;
+
+  return {
+    type: "sequence",
+    values,
+    currentStep,
+    totalSteps,
+    bpm,
+    trigger: (value: boolean) => {
+      subscribers.forEach((sub) => sub(value));
+    },
+    listen: (callback: (value: boolean) => void) => {
+      subscribers.push(callback);
+    },
+    getCurrentValue: () => values[currentStep],
+    metadata: {
+      mode,
+      range,
+      bpm,
+    },
+  };
+}
+
+function parseRange(rangeStr: string): CellRange {
+  // Handle ranges like "A1:B2"
+  const [start, end] = rangeStr.split(":");
+  if (!start || !end) {
+    throw new Error('Invalid range format. Expected "A1:B2"');
+  }
+
+  const startCell = parseCellAddress(start);
+  const endCell = parseCellAddress(end);
+
+  return {
+    start: { row: startCell.rowIndex, col: startCell.colIndex },
+    end: { row: endCell.rowIndex, col: endCell.colIndex },
+  };
+}
+
+function validateMode(mode: string): SequenceMode {
+  const validModes: SequenceMode[] = ["vertical", "horizontal", "matrix"];
+  const normalizedMode = mode.toLowerCase() as SequenceMode;
+
+  if (!validModes.includes(normalizedMode)) {
+    throw new Error(`Invalid sequence mode. Expected one of: ${validModes.join(", ")}`);
+  }
+
+  return normalizedMode;
+}
+
+function extractValuesFromRange(range: CellRange, mode: SequenceMode): (number | null)[] {
+  const values: (number | null)[] = [];
+
+  switch (mode) {
+    case "vertical":
+      for (let row = range.start.row; row <= range.end.row; row++) {
+        const value = getEvaluatedCellValueCoordinates(row, range.start.col);
+        values.push(parseNumericValue(value));
+      }
+      break;
+
+    case "horizontal":
+      for (let col = range.start.col; col <= range.end.col; col++) {
+        const value = getEvaluatedCellValueCoordinates(range.start.row, col);
+        values.push(parseNumericValue(value));
+      }
+      break;
+
+    case "matrix":
+      for (let row = range.start.row; row <= range.end.row; row++) {
+        for (let col = range.start.col; col <= range.end.col; col++) {
+          const value = getEvaluatedCellValueCoordinates(row, col);
+          values.push(parseNumericValue(value));
+        }
+      }
+      break;
+  }
+
+  console.log("Extracted values:", values);
+  return values;
+}
+
+function parseNumericValue(value: any): number | null {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    const num = parseFloat(value);
+    if (!isNaN(num)) return num;
+  }
+  return null;
+}
 
 function isNumber(arg: string): boolean {
   if (arg === "" || arg === null) return false;
@@ -197,12 +377,11 @@ export function getRawCellValue(row: number, col: number): string | null {
   return get(rawGridData)[row]?.[col] || null;
 }
 
-function parseOscillator(tokens: string[], depth: number) {
+function parseOscillator(tokens: string[], depth: number): OscillatorCell {
   if (tokens.length !== 4) {
     throw new Error("Oscillator requires 4 arguments");
   }
 
-  // Ex: OSC("SINE", 440, 0, 1) or OSC("SINE", A1, 0, 1)
   const [waveType, freq, phase, amplitude] = tokens.map((arg) => parseArgument(arg, depth));
 
   return {
@@ -214,7 +393,7 @@ function parseOscillator(tokens: string[], depth: number) {
   };
 }
 
-function parseADSR(tokens: string[], depth: number) {
+function parseADSR(tokens: string[], depth: number): ADSRCell {
   if (tokens.length !== 4) {
     throw new Error("ADSR requires 4 arguments");
   }
@@ -230,7 +409,7 @@ function parseADSR(tokens: string[], depth: number) {
   };
 }
 
-function parseBeat(tokens: string[], depth: number) {
+function parseBeat(tokens: string[], depth: number): BeatCell {
   if (tokens.length !== 2) {
     throw new Error("Beat requires 2 arguments");
   }
@@ -251,7 +430,7 @@ function parseBeat(tokens: string[], depth: number) {
   };
 }
 
-function parseMetronome(tokens: string[], depth: number) {
+function parseMetronome(tokens: string[], depth: number): MetronomeCell {
   tokens = tokens.filter((token) => token !== "(" && token !== ")");
 
   if (tokens.length > 1) {
@@ -352,6 +531,16 @@ function parseArithmetic(tokens: Token[], depth: number): number {
   }
 
   return output[0];
+}
+
+export function getEvaluatedCellValueCoordinates(rowIndex: number, colIndex: number): CellValue {
+  ensureWithinBounds(rowIndex, colIndex);
+
+  if (!cellHasBeenEvaluated(rowIndex, colIndex)) {
+    evaluateCell(rowIndex, colIndex);
+  }
+
+  return get(evaluatedGridData)[rowIndex]?.[colIndex] || null;
 }
 
 export function getEvaluatedCellValue(cellRef: string): CellValue {

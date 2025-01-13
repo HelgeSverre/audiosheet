@@ -1,4 +1,60 @@
-import { replaceGrid } from "./lib/store.ts";
+import { replaceGrid } from "./lib/store";
+
+export function fillSequenceData() {
+  // Vertical sequence (read down a column)
+  // =SEQ(A1:A4, 120)  // Read values A1 through A4 at 120 BPM
+  //
+  // Horizontal sequence (read across a row)
+  // =SEQ(A1:D1, 120, "horizontal")  // Read values A1 through D1
+  //
+  // Matrix sequence (read whole area)
+  // =SEQ(A1:B2, 120, "matrix")  // Read all values in the A1:B2 range
+  replaceGrid([
+    ["120", "120", "120", "120"],
+    ["=SEQ(A1:D1, 120, horizontal)", "", "", ""],
+    ["", "", "", ""],
+    ["100", "440", "", ""],
+    ["200", "440", "", ""],
+    ["300", "800", "", ""],
+    ["400", "440", "", ""],
+    ["500", "440", "", "=seq(A4:A7, 120, vertical)"],
+    ["600", "440", "=SEQ(A4:B9, 120, matrix)", "=Audio(C8,C9)"],
+
+    // ],
+
+    // A1: 440    // frequency for note 1
+    // A2: 880    // frequency for note 2
+    // A3: 660    // frequency for note 3
+    // A4: 220    // frequency for note 4
+    // B1: =SEQ(A1:A4, 120)  // create sequence from frequencies
+    // C1: =AUDIO(B1, B1)    // play sequence using sequence as both frequency and trigger
+
+    // ["440", "880", "660", "220"],
+    // ["=SEQ(A1:A3, 120)", "=SEQ(A1:A3, 120)", "=SEQ(A1:A3, 120)", "=SEQ(A1:A3, 120)"],
+    // ["=AUDIO(B1, B1)", "=AUDIO(B1, B1)", "=AUDIO(B1, B1)", "=AUDIO(B1, B1)"],
+  ]);
+}
+
+export function fillChordTestData() {
+  let code = `
+  let count = getValue("B1") || 0;
+  onBeat(() => {
+    count++;
+    setValue('C6', count);
+  });
+  return count;
+`;
+  let jsScript = `=JS(${code})`;
+
+  replaceGrid([
+    /* 1 */ ["=CHORD('C', 'maj')", "=CHORD('C', 'min')", "=CHORD('C', 'dim')", "=CHORD('C', 'aug')"],
+    /* 2 */ ["C", "D", "E", "F", "G", "A", "B"],
+    /* 3 */ ["1", "2", "3", "4", "5", "6", "7"],
+    /* 4 */ ["maj", "min", "dim", "aug", "maj7", "min7", "7"],
+    /* 5 */ ["=CHORD(A2, A4)", "=CHORD(B2, B4)", "=CHORD(C2, C4)", "=CHORD(D2, D4)"],
+    /* 6 */ [jsScript, "100"],
+  ]);
+}
 
 export function fillAdsrData() {
   replaceGrid([

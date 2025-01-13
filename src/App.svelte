@@ -6,7 +6,7 @@
   import MetronomeCell from "./cells/MetronomeCell.svelte";
   import TimeCell from "./cells/TimeCell.svelte";
   import classNames from "classnames";
-  import { Download, Music, Pause, Play, Save, Square, Trash2, Upload } from "lucide-svelte";
+  import { Download, Music4, Pause, Play, Save, Square, Trash2, Upload } from "lucide-svelte";
   import { exportToFile, importFromFile, loadFromLocalStorage, saveToLocalStorage } from "./lib/storage";
   import {
     evaluateAllCells,
@@ -21,6 +21,7 @@
     fillAdsrData,
     fillAudioTestData,
     fillBasicFormulaTestData,
+    fillChordTestData,
     fillMiscTestData,
     fillWaveTestData,
   } from "./testData";
@@ -29,19 +30,23 @@
   import ErrorCell from "./cells/ErrorCell.svelte";
   import AudioCell from "./cells/AudioCell.svelte";
   import { getCellAddress, getColumnLabel } from "./lib/utils";
+  import SequenceCell from "./cells/SequenceCell.svelte";
 
-  let inputRef;
-
-  let isPlaying = false;
-  let animationFrameId;
-  let lastUpdateTime = 0;
   const fps = 60;
   const frameInterval = 1000 / fps;
+
+  let editingCell: any = null;
+  let inputRef: any = null;
+  let isPlaying: boolean = false;
+  let animationFrameId: number;
+  let lastUpdateTime: number = performance.now();
 
   onMount(() => {
     initializeStores(50, 50);
     // loadFromLocalStorage();
     // fillAudioTestData();
+    // fillSequenceData();
+    fillChordTestData();
     evaluateAllCells();
     animate();
   });
@@ -50,9 +55,7 @@
     cancelAnimationFrame(animationFrameId);
   });
 
-  let editingCell = null;
-
-  async function startEditing(rowIndex, colIndex) {
+  async function startEditing(rowIndex: number, colIndex: number) {
     editingCell = { rowIndex, colIndex };
     await tick();
     inputRef?.focus();
@@ -78,10 +81,7 @@
     cancelAnimationFrame(animationFrameId);
   }
 
-  /**
-   * @param {DOMHighResTimeStamp} currentTime
-   */
-  function loop(currentTime) {
+  function loop(currentTime: DOMHighResTimeStamp) {
     if (currentTime - lastUpdateTime >= frameInterval) {
       const delta = (currentTime - lastUpdateTime) / 1000;
       $time += delta;
@@ -94,12 +94,7 @@
     loop(performance.now());
   }
 
-  /**
-   * @param {number} rowIndex
-   * @param {number} colIndex
-   * @param {string} value
-   */
-  function handleCellChange(rowIndex, colIndex, value) {
+  function handleCellChange(rowIndex: number, colIndex: number, value: any): void {
     try {
       updateCell(rowIndex, colIndex, value);
       stopEditing();
@@ -121,8 +116,8 @@
     <div class="flex items-center justify-start gap-4">
       <!-- Logo and Title -->
       <div class="inline-flex items-center space-x-2">
-        <Music size="16" class="text-gray-700" />
-        <span class="text-sm font-semibold text-gray-800">BeatSheet</span>
+        <Music4 size="16" class="text-gray-700" />
+        <span class="text-sm font-semibold text-gray-800">AudioSheet</span>
       </div>
 
       <!-- Transport Controls -->
@@ -212,7 +207,7 @@
       <tbody>
         {#each $evaluatedGridData as row, rowIndex}
           <tr>
-            <th>{rowIndex + 1}</th>
+            <th class="col-header tabular-nums">{rowIndex + 1}</th>
             {#each row as cell, colIndex (`cell-${rowIndex}-${colIndex}`)}
               <td
                 class={classNames("cell-wrapper hover:bg-blue-50", {
@@ -222,6 +217,7 @@
                   "cell-wrapper--beat": typeof cell === "object" && cell.type === "beat",
                   "cell-wrapper--metronome": typeof cell === "object" && cell.type === "metronome",
                   "cell-wrapper--time": typeof cell === "object" && cell.type === "time",
+                  "cell-wrapper--chord": typeof cell === "object" && cell.type === "chord",
                   "cell-wrapper--empty": cell === "" || cell === undefined || cell === null,
                 })}
                 on:mouseenter={() => (selectedCellAddress = getCellAddress(rowIndex, colIndex))}
@@ -262,6 +258,8 @@
                     <BeatCell bpm={cell.bpm} pattern={cell.pattern} time={$time} trigger={cell.trigger} />
                   {:else if cell?.type === "metronome"}
                     <MetronomeCell bpm={cell.bpm} time={$time} />
+                  {:else if cell?.type === "sequence"}
+                    <SequenceCell cell={cell} time={$time} trigger={cell.trigger} />
                   {:else if cell?.type === "time"}
                     <TimeCell time={$time} />
                   {:else if cell?.type === "adsr"}
@@ -276,7 +274,9 @@
                     <AudioCell frequency={cell.frequency} subscribe={cell.subscribe} waveType={cell.waveType} />
                   {/if}
                 {:else}
-                  <div class="p-1">{cell}</div>
+                  <div class="p-1">
+                    {cell}
+                  </div>
                 {/if}
               </td>
             {/each}
